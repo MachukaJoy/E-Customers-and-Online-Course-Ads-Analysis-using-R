@@ -1,0 +1,475 @@
+---
+title: "CryptoCourseDataAnalysis"
+author: "Joy Machuka"
+date: "8/27/2021"
+output:
+  html_document: default
+  pdf_document: default
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+# tinytex::install_tinytex()
+```
+
+
+##Defining the question
+
+A Kenyan entrepreneur has created an online cryptography course and would want to advertise it on her blog. She currently targets audiences originating from various countries. In the past, she ran ads to advertise a related course on the same blog and collected data in the process. She would now like to employ your services as a Data Science Consultant to help her identify which individuals are most likely to click on her ads.
+
+##Metric of success
+
+Our analysis will be considered successful if we are able to analyze the data and get the most likely to take the course statistics.
+
+##Context
+An entrepreneur who practices online teaching has opted to use ads to advertise her course to the public. To achieve this she needs to use who are more likely to click her ads so sh can target them in the creation process. She uses data collected from past course ads. She uses a data scientist to do this.
+
+##Experimental Design 
+Data preparation
+Data Cleaning
+Univariate Analysis
+Bivariate Analysis
+Modelling
+Recommendation
+Conclusion
+
+
+##Data Preparation
+```{r}
+#load dataset
+crypto <- read.csv('http://bit.ly/IPAdvertisingData')
+head(crypto)
+```
+```{r}
+#preview the dataset
+View(crypto)
+```
+```{r}
+#viewing first 6 rows
+head(crypto, 6)
+```
+
+```{r}
+#check the shape of dataset
+dim(crypto)
+```
+Dataset has 1000 rows and 10 columns.
+```{r}
+#checking the class of our dataset
+class(crypto)
+```
+We are working with a dataframe.
+```{r}
+#checking column names
+names(crypto)
+```
+```{r}
+#checking datas types of variables
+str(crypto)
+```
+We have a mixture of integers, numerics and characters.
+```{r}
+#searching for information about dataset
+?crypto
+```
+No documentation for ‘crypto’ in specified packages and libraries.
+
+##Data Cleaning
+```{r}
+#checking for null values per column
+colSums(is.na(crypto))
+```
+No null values in our data frame.
+```{r}
+#checking for duplicates
+duplicated_rows <- crypto[duplicated(crypto),]
+duplicated_rows
+```
+There aren't any duplicated rows and missing data from our data frame as seen above.
+
+```{r}
+#checking for outliers
+boxplot(crypto$Age)
+boxplot(crypto$Daily.Time.Spent.on.Site)
+boxplot(crypto$Area.Income)
+boxplot(crypto$Daily.Internet.Usage)
+boxplot(crypto$Male)
+boxplot(crypto$Clicked.on.Ad)
+# boxplot(crypto$Ad.Topic.Line)
+# boxplot(crypto$City)
+# boxplot(crypto$Country)
+# boxplot(crypto$Timestamp)
+
+```
+We have outliers only on the Income column which we are going to keep because it is viable an realistic in the real world
+```{r}
+# par(mfrow = c(2, 2))  # Set up a 2 x 2 plotting space
+# 
+# # Create the loop.vector (all the columns)
+# loop.vector <- 1:10
+# 
+# for (i in loop.vector) { # Loop over loop.vector
+# # store data in column.i as x
+#   x <- crypto[,i]
+# # Plot boxplot of x
+#   boxplot(x, main = paste("plot", i),
+#        xlim = c(0, 2))
+# }
+```
+
+
+```{r}
+# Viewing the outliers in the Area.Income column since it is the only column with outliers
+boxplot(crypto$Area.Income)
+```
+Viewing the income boxplot individually.
+```{r}
+#viewing the outlier rows
+boxplot.stats(crypto$Area.Income)$out
+```
+Looking at the specific outliers and as we said they are viable so we keep them.
+```{r}
+#prooving further by checking the quantile distribution of income.
+quantile(crypto$Area.Income)
+```
+We decided to leave our outliers since they seemed viable and helpful to our analysis after looking at the quantile distribution
+
+##Univariate Analysis
+```{r}
+#summary statistics of all the columns
+summary(crypto)
+```
+Area income ranges between 13996.5 and 79484.6
+
+```{r}
+num = crypto[,c(1,2,3,4,7,10)]
+summary(num)
+```
+```{r}
+#Mean
+mean(crypto$Daily.Time.Spent.on.Site)
+mean(crypto$Age)
+mean(crypto$Area.Income)
+mean(crypto$Daily.Internet.Usage)
+mean(crypto$Male)
+mean(crypto$Clicked.on.Ad)
+```
+On average, the daily time spent on the site is 65
+The average age of the user is 36 years.
+The average area income is 55000.
+```{r}
+# Median
+median(crypto$Daily.Time.Spent.on.Site)
+median(crypto$Age)
+median(crypto$Area.Income)
+median(crypto$Daily.Internet.Usage)
+median(crypto$Male)
+median(crypto$Clicked.on.Ad)
+```
+```{r}
+#mode of the columns
+getmode <- function(v) {
+   uniqv <- unique(v)
+   uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+getmode(crypto$Daily.Time.Spent.on.Site)
+getmode(crypto$Age)
+getmode(crypto$Area.Income)
+getmode(crypto$Daily.Internet.Usage)
+getmode(crypto$Male)
+getmode(crypto$Clicked.on.Ad)
+getmode(crypto$City)
+getmode(crypto$Country)
+```
+The age that is the most common of the users is 31 years
+The City with the most repeat users is Lisamouth
+The country that's most repeated is Czech Republic
+The most common gender in the data is Female
+
+```{r}
+#Variance
+var(crypto$Daily.Time.Spent.on.Site)
+var(crypto$Age)
+var(crypto$Area.Income)
+var(crypto$Daily.Internet.Usage)
+var(crypto$Male)
+var(crypto$Clicked.on.Ad)
+```
+
+```{r}
+# Standard Deviation
+sd(crypto$Daily.Time.Spent.on.Site)
+sd(crypto$Age)
+sd(crypto$Area.Income)
+sd(crypto$Daily.Internet.Usage)
+sd(crypto$Male)
+sd(crypto$Clicked.on.Ad)
+```
+```{r}
+#Quantiles
+quantile(crypto$Daily.Time.Spent.on.Site)
+quantile(crypto$Age)
+quantile(crypto$Area.Income)
+quantile(crypto$Daily.Internet.Usage)
+quantile(crypto$Male)
+quantile(crypto$Clicked.on.Ad)
+```
+```{r}
+# par(mfrow = c(2, 5))  # Set up a 2 x 2 plotting space
+# 
+# # Create the loop.vector (all the columns)
+# loop.vector <- 1:10
+# 
+# for (i in loop.vector) { # Loop over loop.vector
+# 
+# # store data in column.i as x
+#   x <- crypto[,i]
+#   
+# # Plot histogram of x
+#   hist(x,
+#        main = paste("histogram", i),
+#        xlab = "Scores",
+#        xlim = c(0, 100))
+# }
+```
+```{r}
+hist(crypto$Area.Income, breaks = 10, main = "Area Income",col = "lightblue")
+```
+The areas that have an income between 40000 and 70000 have the most clicks on the ads
+```{r}
+hist(crypto$Daily.Time.Spent.on.Site, breaks = 10, main = "Time Spent on site",col = "lightblue")
+```
+Averagely 75-85 is the most time spent with high frequencies
+```{r}
+hist(crypto$Age, breaks = 10, main = "Age",col = "lightblue")
+```
+25-40 age seems to be the area with most frequencies.
+```{r}
+names(crypto)
+```
+```{r}
+hist(crypto$Daily.Internet.Usage, breaks = 20, main = "Daily.Internet.Usage",col = "lightblue")
+```
+```{r}
+male <- table(crypto$Male)
+barplot(male,main = "Male",col = topo.colors(2),ylim = c(0, 800))
+legend("topright",inset = .02, title="Gender",
+       c("Female","Male"), fill=topo.colors(2), cex=0.8)
+```
+More females than males engage with the ads.
+```{r}
+clicked <- table(crypto$Clicked.on.Ad)
+barplot(clicked,main = "Clicked on Ad",col = topo.colors(2), ylim = c(0,800))
+legend("topright",inset = .02, title="Clicked on Ad",
+       c("Not Clicked","Clicked"), fill=topo.colors(2), cex=0.8)
+```
+Difference between clicked and not clicked ads is not very significant.
+```{r}
+par(las=2, cex.axis=0.7)
+country <- table(crypto$Country)
+barplot(sort(country[1:40], decreasing = TRUE), main = "Country",col = terrain.colors(20))
+```
+Afhanistan, Australia and Albania have the most engagement. With Cape Verde being the least.
+```{r}
+par(las=2)
+age <- table(crypto$Age)
+barplot(sort(age[1:20], decreasing = TRUE), main = "Age",col = terrain.colors(20))
+```
+Ages 31, 36, 28, 29 and 33 are more actively involved as seen above.
+
+##Bivariate Analysis
+```{r}
+# install.packages('dplyr')
+
+```
+```{r}
+# install.packages('ggplot2')
+```
+```{r}
+library("dplyr")
+library("ggplot2")
+# group by gender/Male
+by_time <- crypto %>% 
+  group_by(Male) %>% 
+  summarise(Total.Time.Spent.on.Site = sum(Daily.Time.Spent.on.Site))
+by_time
+p <- ggplot(by_time, aes(x = factor(Male), y = Total.Time.Spent.on.Site, fill = factor(Male)))+geom_bar(stat="identity")
+p + scale_fill_discrete(name = "Male", labels = c("Female","Male"))+ labs(title="Gender that spends more time on the Internet", x="Gender")
+```
+Females spend more time on the internet than males.
+```{r}
+#separating clicked ads
+clicked_ad <- crypto[crypto$Clicked.on.Ad == 1,]
+
+```
+
+```{r}
+#countries with more clicked ads
+library("dplyr")
+country <- crypto %>% group_by(Country) %>% summarise(clicked.ad =sum(Clicked.on.Ad[Clicked.on.Ad == 1]))
+head(country)
+```
+Afghanistan, Albania and Algeria have most clicked ads.
+
+```{r}
+# c <- ggplot(rows, aes(x = reorder(Country,clicked.ad), y=clicked.ad)) + geom_col() +coord_flip() +  geom_bar(stat="identity", fill="lightblue")
+# c + labs(title="Country with Highest Clicks on Ads", x="Countries", y="Clicked Ads")
+```
+```{r}
+# Females that click on ads
+gender <- crypto %>% group_by(Clicked.on.Ad) %>% summarise(gender = length(Male[Male == 0]))
+gender
+
+females <- ggplot(gender, aes(x = factor(Clicked.on.Ad), y = gender, fill=factor(Clicked.on.Ad))) + geom_bar(stat="identity")
+females + scale_fill_discrete(name = "Ad Clicked", labels = c("Not Clicked","Clicked"))+ labs(title="Females that Clicked vs Not Clicked", x="Clicked on Ad", y="No. of Females")
+
+```
+Most females were clicking the ads.
+```{r}
+# Males that clicked on ads
+males <- crypto %>% group_by(Clicked.on.Ad) %>% summarise(gender = length(Male[Male == 1]))
+males
+
+males <- ggplot(males, aes(x = factor(Clicked.on.Ad), y = gender, fill=factor(Clicked.on.Ad))) + geom_bar(stat="identity")
+males + scale_fill_discrete(name = "Ad Clicked", labels = c("Not Clicked","Clicked"))+ labs(title="Males that Clicked vs Not Clicked", x="Clicked on Ad", y="No. of Males")
+```
+Most males did not click on the ads.
+
+```{r}
+str(crypto)
+
+head(num,4)
+```
+```{r}
+# Covariance
+covariance = cov(num)
+View(round(covariance,2))
+```
+```{r}
+# Correlation Matrix
+correlation_matrix = cor(num)
+View(round(correlation_matrix,2))
+```
+```{r}
+# Scatter Plot
+area.income <- crypto$Area.Income
+internet.usage <- crypto$Daily.Internet.Usage
+time.spent <- crypto$Daily.Time.Spent.on.Site
+
+plot(area.income, internet.usage, xlab="Area Income",ylab = "Daily Internet Usage")
+plot(area.income,time.spent,xlab = "Area Income",ylab = "Daily Time Spent on the Internet")
+plot(time.spent,internet.usage, xlab="Daily Time spent", ylab="Daily Internet Usage")
+```
+##Modelling
+```{r}
+#importing libraries
+library("caret")
+```
+```{r}
+library("tidyverse")
+```
+```{r}
+library("rpart")
+library("e1071")
+```
+```{r}
+# Normalize our features
+features <- crypto[,c(1,2,3,4,7)]
+# The normalization function is created
+normalize <-function(x) { (x -min(x))/(max(x)-min(x))}
+# Normalization function is applied to the dataframe
+crypto_norm <- as.data.frame(lapply(features, normalize))
+head(crypto_norm)
+```
+```{r}
+summary(crypto_norm)
+```
+```{r}
+# Generate a random number that is 80% of the total number of rows in dataset
+train <- sample(1:nrow(crypto), 0.8 * nrow(crypto)) 
+#training data
+crypto_train <- crypto_norm[train,]
+crypto_train_target <- as.factor(crypto[train,10])
+# testing data
+crypto_test <- crypto_norm[-train,]
+crypto_test_target <- as.factor(crypto[-train,10])
+dim(crypto_train)
+dim(crypto_test)
+```
+KNN Classification
+```{r}
+# Applying k-NN classification algorithm.
+library(class)
+# No. of neighbors are generally square root of total number of instances
+neigh <- round(sqrt(nrow(crypto)))+1 
+knn_model <- knn(crypto_train,crypto_test, cl=crypto_train_target, k=neigh)
+# Visualizing classification results
+cm_knn <- confusionMatrix(table(crypto_test_target, knn_model))
+cm_knn
+```
+Decision Trees
+```{r}
+# convert the target column to a factor
+crypto$Clicked.on.Ad <- as.factor(crypto$Clicked.on.Ad)
+features = crypto[,c(1,2,3,4,7,10)]
+# Splitting
+intrain <- createDataPartition(y = crypto$Clicked.on.Ad, p= 0.8, list = FALSE)
+training <- features[intrain,]
+testing <- features[-intrain,]
+set.seed(42)
+myGrid <- expand.grid(mtry = sqrt(ncol(crypto)),
+                     splitrule = c("gini", "extratrees"),
+                     min.node.size = 20)
+dt_model <- train(Clicked.on.Ad ~ .,
+               data = training,
+               method = "ranger", 
+               tuneGrid = myGrid,
+               trControl = trainControl(method='repeatedcv', 
+                                        number=10, 
+                                        repeats=3,
+                                        search = 'random',
+                                       verboseIter = FALSE))
+dt_model
+# Make predictions and check accuracy 
+dt_pred <- predict(dt_model,testing )
+cm_dt <- confusionMatrix(table(dt_pred, testing$Clicked.on.Ad))
+cm_dt
+```
+Naive Bayes
+```{r}
+# split the training into Features and labels for the model
+x = training[,1:4]
+y = training$Clicked.on.Ad
+nb_model <- train(x,y, "nb", trControl = trainControl(method = "repeatedcv", 
+                       number = 10,
+                       repeats = 3),
+                      preProcess = c("range"))
+# Make prediction
+nb_pred <- predict(nb_model , testing)
+# Accuracy
+cm_nb <- confusionMatrix(table(nb_pred, testing$Clicked.on.Ad))
+cm_nb
+```
+#Challenging the solution with Support Vector Machines.
+```{r}
+# Split the Data into Train and Test into 80:20 split
+intrain <- createDataPartition(y = crypto$Clicked.on.Ad, p= 0.8, list = FALSE)
+training <- features[intrain,]
+testing <- features[-intrain,]
+
+set.seed(42)
+svm_Linear <- train(Clicked.on.Ad ~ ., data = training, method = "svmLinear",
+trControl=trainControl(method = "repeatedcv", 
+                       number = 10,
+                       repeats = 3),
+                      preProcess = c("center", "scale"))
+# preProcess -> deals with normalization
+svm_Linear
+# Make predictions and check accuracy 
+test_pred <- predict(svm_Linear, testing)
+cm_svmlinear <- confusionMatrix(table(test_pred, testing$Clicked.on.Ad))
+cm_svmlinear
+```
+#Conclusions
+All models performed well with accuracy scores of above 95%. However, the SVM and Naive BAyes performed the best out of all models. 
