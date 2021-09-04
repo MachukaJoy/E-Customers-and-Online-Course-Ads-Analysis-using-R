@@ -1,0 +1,421 @@
+---
+title: "ECommerceCustomersAnlaysis"
+author: "Joy Machuka"
+date: "9/3/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+PROBLEM DEFINITION
+
+Defining the Question
+Kira Plastinina is a Russian brand whose sales and Marketing team would like to understand their customer’s behavior from data that they have collected over the past year.
+
+Metrics of Success
+Our analysis will be considered successful when we are able to draw insights from the cluster analysis performed on the data.
+
+Context
+Kira Plastinina is a Russian fashion designer whose brand is sold through a defunct chain of retail stores in Russia, Ukraine, Kazakhstan, Belarus, China, Philippines, and Armenia. The marketing team wants an analysis carried out on their customers and insights drawn from various attributes and features of their customers.
+
+Experimental Design
+
+Defining the Question
+Data preparation
+Data Cleaning
+Univariate Analysis
+Bivariate Analysis
+Clustering
+Conclusion
+
+# Data Sourcing(Loading dataset)
+```{r}
+packages<-function(x){
+  x<-as.character(match.call()[[2]])
+  if (!require(x,character.only=TRUE)){
+    install.packages(pkgs=x,repos="http://cran.r-project.org")
+    require(x,character.only=TRUE)
+  }
+}
+
+#importing libraries
+library(tidyverse) # data manipulation
+library(corrplot)
+library(gridExtra)
+library(GGally)
+library("factoextra")
+library(cluster) # clustering algorithms 
+```
+
+```{r}
+customers <- read.csv("http://bit.ly/EcommerceCustomersDataset")
+```
+```{r}
+#Checking head of our dataset
+head(customers)
+```
+```{r}
+class(customers)
+```
+We have a data frame
+```{r}
+dim(customers)
+```
+Our dataset has 12330 rows and 18 columns
+```{r}
+#checking column names
+names(customers)
+```
+Above are our column names.
+```{r}
+str(customers)
+```
+Our columns are categorical num, int and characters.
+
+```{r}
+str(customers)
+```
+
+Data Cleaning
+
+```{r}
+anyNA(customers)
+```
+We have missing values. We go ahead and check number
+```{r}
+#checking for null values per column
+colSums(is.na(customers))
+```
+We have a number of nulls that we decided to drop since they are minimal
+```{r}
+#dropping nulls
+customers = na.omit(customers)
+#Confirming nulls after dropping
+anyNA(customers)
+```
+There aren't any more nulls. 
+
+```{r}
+#checking for duplicates
+duplicated_rows <- customers[duplicated(customers),]
+duplicated_rows
+```
+We have 117 duplicated rows that we are going to delete and print out only the unique items.
+```{r}
+customers <- customers[!duplicated(customers), ]
+dim(customers)
+```
+After deleting we are left with 12199 rows
+```{r}
+duplicated_rows <- customers[duplicated(customers),]
+# duplicated_rows
+```
+```{r}
+names(customers)
+```
+We remove the created column duplicated_rows.
+```{r}
+# Dplyr remove a column by name:
+# library("dplyr")
+# select(customers, -duplicated_rows)
+```
+Anomalies
+
+Next we convert the negative values we noticed in the duration columns while viewing the head of our dataset to nulls.
+```{r}
+#replacing negatives with nulls
+customers[customers<0] <- NA
+```
+
+```{r}
+#checking created nulls
+anyNA(customers)
+```
+We will replace the created nulls with mode.
+```{r}
+#mode function
+getmode <- function(v) {
+   uniqv <- unique(v)
+   uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+#apply it on the duration columns
+getmode(customers$Administrative_Duration)
+getmode(customers$Informational_Duration)
+getmode(customers$ProductRelated_Duration)
+
+```
+
+```{r}
+#Replacing nulls created with mode gotten above
+customers$Administrative_Duration[is.na(customers$Administrative_Duration)] <- 0
+customers$Informational_Duration[is.na(customers$Informational_Duration)] <- 0
+customers$ProductRelated_Duration[is.na(customers$ProductRelated_Duration)] <- 0
+```
+
+```{r}
+#Confirming we have no more nulls
+anyNA(customers)
+```
+We convert all char  datatypes to factors so we can check for outliers and for better modelling.
+```{r}
+# convert into a factor
+customers$VisitorType <- factor(customers$VisitorType)
+head(customers$VisitorType)
+
+customers$Weekend <- factor(customers$Weekend)
+head(customers$Weekend)
+
+customers$Revenue <- factor(customers$Revenue)
+head(customers$Revenue)
+
+customers$Month <- factor(customers$Month)
+head(customers$Month)
+```
+Outliers
+```{r}
+#boxplot for whole dataset
+boxplot(customers)
+```
+We have outliers in several columns. We plot them individually to check for specific columns clearly.
+```{r}
+num_col <- customers[ ,c(1,2,3,4,5,6,7,8,9,10,12,13,14,15)]
+outliers = function(x){
+  for(i in colnames(x)){
+    boxplot(customers[[i]], xlab=i, main=paste0("Boxplot for ",i))
+  }
+}
+outliers(num_col)
+```
+We can see the ouliers more evidently. We will replace outliers with 5th and 95th percentile
+```{r}
+outreplace <- function(x){
+   qnt <- quantile(x, probs=c(.25, .75), na.rm = T)
+   caps <- quantile(x, probs=c(.05, .95), na.rm = T)
+   H <- 1.5 * IQR(x, na.rm = T)
+   x[x < (qnt[1] - H)] <- caps[1]
+   x[x > (qnt[2] + H)] <- caps[2]
+   return(x)
+}
+customers$Administrative <- outreplace(customers$Administrative)
+customers$Administrative_Duration <-outreplace(customers$Administrative_Duration)
+customers$Informational <- outreplace(customers$Informational)
+customers$Informational_Duration <- outreplace(customers$Informational_Duration )
+customers$ProductRelated <- outreplace(customers$ProductRelated)
+customers$ProductRelated_Duration <- outreplace(customers$ProductRelated_Duration)
+customers$BounceRates <- outreplace(customers$BounceRates)
+customers$ExitRates <- outreplace(customers$ExitRates)
+customers$PageValues <- outreplace(customers$PageValues)
+customers$SpecialDay <- outreplace(customers$SpecialDay)
+customers$OperatingSystems <- outreplace(customers$OperatingSystems)
+customers$Browser <- outreplace(customers$Browser)
+customers$Region <- outreplace(customers$Region)
+customers$TrafficType <- outreplace(customers$TrafficType)
+```
+
+```{r}
+outliers(num_col)
+```
+Most of the outliers are replaced. We decided toleave the remaining ones.
+```{r}
+dim(customers)
+```
+Our final cleaned data.frame is left with 12199 rows and 18 columns.
+
+Univariate Analysis
+
+```{r}
+#summary of the descriptive staistics of the columns
+summary(customers)
+```
+
+```{r}
+#plotting barplots of the categorical columns
+library("ggplot2" )
+
+# Group Special Days
+specialday <- ggplot(customers, aes(x=factor(SpecialDay), fill = factor(SpecialDay))) + geom_bar()
+specialday +  scale_fill_discrete(name = "Special Day", labels = c("Not Special","Special"))+ labs(title="Number of Special Days", x="Special Days")
+
+# Count the Months
+months <- ggplot(customers ,aes(x=Month , fill=factor(Month))) + geom_bar() + labs(title = "Distribution of the Months", x="Months")
+months +scale_fill_discrete(name = "Month") 
+
+# Count on Visitor Type
+visitor <- ggplot(customers, aes(VisitorType, fill=factor(VisitorType)))+ geom_bar() + labs(title = "Distribution of Visitor Types", x="Special Days")
+visitor + scale_fill_discrete(name = "Visitor Type") 
+
+# Count on Revenue
+revenue <- ggplot(customers, aes(Revenue, fill=factor(Revenue))) +geom_bar() + labs(title = "Distribution of Revenue")
+revenue +scale_fill_discrete(name = "Revenue") 
+
+# Group Revenue by Months
+revenue1 <- ggplot(customers, aes(x=Month, fill= factor(Revenue)))+ geom_bar(position=position_dodge2(width = 1.2, preserve = "single"))
+revenue1 + labs(title = "Distribution of Revenue in a Month") +scale_fill_discrete(name = "Revenue") 
+
+# Group Special Days by Month
+specialday1 <- ggplot(customers, aes(x=Month, fill= factor(SpecialDay)))+ geom_bar(position = position_dodge2(width = 1.2, preserve = "single"))
+specialday1 + scale_fill_discrete(name = "Special Day", labels = c("Not Special","Special")) + labs(title = "Distribution of Special Days in a Month")
+
+# Group Visitor Type by Month
+visitor1 <- ggplot(customers, aes(x=Month, fill=factor(VisitorType)))+geom_bar(position=position_dodge2(width = 1.2, preserve = "single")) + labs(title = "Distribution of Visitor Type in a Month")
+visitor1 + scale_fill_discrete(name = "Visitor Type") 
+
+# Group Weekend by Month
+weekend <- ggplot(customers, aes(x=Month, fill=factor(Weekend)))+geom_bar(position=position_dodge2(width = 1.2, preserve = "single"))+labs(title="Distribution of Revenue during weekends over the Months",subtitle = "(FALSE -No Revenue vs TRUE - Revenue)", x ="")+facet_wrap(~ factor(Revenue) )
+weekend + scale_fill_discrete(name = "Weekend", labels = c("Not Weekend","Weekend")) 
+
+# Distribution of Traffic Type
+traffictype <- ggplot(customers, aes(x=factor(TrafficType), fill=factor(TrafficType)))+ geom_bar()+labs(title="Distribution of Traffic Type", x= "Traffic Type")
+traffictype +scale_fill_discrete(name = "Traffic Type")
+
+# Distribution of Browser
+browser <-ggplot(customers, aes(x=factor(Browser), fill=factor(Browser)))+ geom_bar()+labs(title="Distribution of Browser", x = "Browser")
+browser +scale_fill_discrete(name = "Browser")
+
+# Distribution of Operating System
+os <- ggplot(customers, aes(x=factor(OperatingSystems), fill= factor(OperatingSystems)))+ geom_bar()+labs(title="Distribution of  Operating Systems" , x="Operating Systems")
+os +scale_fill_discrete(name = "Operating Systems")
+
+# Distribution of TRaffic Type in a Month
+traffictype1 <- ggplot(customers, aes(x=Month, fill=factor(TrafficType))) +geom_bar(width = 0.8,position=position_dodge(width = 0.8))+labs(title="Distribution of Traffic Type in a Month")
+traffictype1 + scale_fill_brewer(name ="Traffic Type",palette="Set1")
+```
+There was most engagement on not special days than special days as from the first plot.
+There was most customer engagement in the months of March, May and November both for true and false revenue and returning visitors.
+Most customers were returning visitor types.
+our class attribute revenue had most not revenue engagements.
+May and February were the only months with special days engagement.
+Traffic type 2 was most popular.
+Browser type 2 was most used.
+Operating system 2 was most used.
+Generally for all attributed May and November led in the distribution.
+
+```{r}
+#plotting histograms of the numerical columns
+histogram = function(x){
+  for(i in colnames(x)){
+    hist(customers[[i]], breaks = 10,main =i,xlab = i,col = "lightblue")
+  }
+}
+histogram(num_col)
+```
+
+Bivariate Analysis
+```{r}
+# Covariance
+covariance = cov(num_col)
+View(round(covariance,2))
+```
+```{r}
+# Convert Revenue Column to Numeric for correlation checking
+customers$Revenue <- as.numeric(customers$Revenue)
+numcorr <- customers[ ,c(1,2,3,4,5,6,7,8,9,10,12,13,14,15,18)]
+# Correlation matrix
+corr_matrix = cor(numcorr)
+corr <- as.data.frame(round(corr_matrix,2))
+corr
+```
+```{r}
+names(customers)
+```
+Clustering
+
+```{r}
+# Transform Factors to Numeric
+customers$Month <- as.numeric(customers$Month)
+customers$VisitorType <- as.numeric(customers$VisitorType)
+customers$Weekend <- as.numeric(customers$Weekend)
+str(customers)
+```
+```{r}
+#normalize data
+customersNorm <- as.data.frame(scale(customers))
+head(customersNorm)
+```
+```{r}
+customers.new<- customersNorm[, c(1, 2, 3, 4,5,6,7,8,9,10,11,12,13,14,15,16,17)]
+customers.class<- customersNorm[, "Revenue"]
+```
+```{r}
+str(customers.new)
+```
+
+```{r}
+set.seed(123)
+customers_K2 <- kmeans(customers.new, centers = 2, nstart = 25)
+```
+```{r}
+customers_K3 <- kmeans(customers.new, centers = 3, nstart = 25)
+customers_K4 <- kmeans(customers.new, centers = 4, nstart = 25)
+customers_K5 <- kmeans(customers.new, centers = 5, nstart = 25)
+```
+```{r}
+p1 <- fviz_cluster(customers_K2, geom = "point", data = customers.new) + ggtitle(" K = 2")
+p2 <- fviz_cluster(customers_K3, geom = "point", data = customers.new) + ggtitle(" K = 3")
+p3 <- fviz_cluster(customers_K4, geom = "point", data = customers.new) + ggtitle(" K = 4")
+p4 <- fviz_cluster(customers_K5, geom = "point", data = customers.new) + ggtitle(" K = 5")
+
+grid.arrange(p1, p2, p3, p4, nrow = 2)
+```
+```{r}
+#getting the performance of various values of K using the BSS to TSS ratio
+customers_K2$betweenss/customers_K2$totss
+customers_K3$betweenss/customers_K3$totss
+customers_K4$betweenss/customers_K4$totss
+customers_K5$betweenss/customers_K5$totss
+```
+We find the K=5 having the highest ratio of BSS to TSS hence being the best performed model for Kmeans.
+We try and find optimal number of clusters using elbow method.
+```{r}
+wssplot <- function(data, nc = 15, set.seed = 1234){
+  wss <- (nrow(data) - 1)*sum(apply(data, 2, var))
+  for(i in 2:nc) {
+    set.seed(1234)
+    wss[i] <- sum(kmeans(x = data, centers = i, nstart = 25)$withinss)
+  }
+  plot(1:nc, wss, type = 'b', xlab = 'Number of Clusters', ylab = 'Within Group Sum of Square',
+       main = 'Elbow Method Plot to Find Optimal Number of Clusters', frame.plot = T,
+       col = 'blue', lwd = 1.5)
+}
+
+wssplot(customers.new)
+```
+
+# Hierarchical Clustering
+```{r}
+d <- dist(customers.new, method = "euclidean")
+```
+
+```{r}
+res.hc <- hclust(d, method = "ward.D2" )
+```
+
+```{r}
+plot(res.hc, cex = 0.6, hang = -1)
+```
+# CONCLUSION and Recommendation
+
+We used the ward.D2 method for our hierarchical clustering. It appears to perform better than the KMeans clustering. Our KMeans of k=5 had the highest BSS to TSS ratio which is what we are seeking to achieve. Despite this, it wasn't the best performed as an accuracy of 35% is still low. We recommend trying other unsupervised models or optimizing the KMeans.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
